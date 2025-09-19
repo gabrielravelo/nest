@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { CarsService } from './cars.service';
 
-@Controller('cars')
+@Controller('carsssss')
 export class CarsController {
     constructor(private readonly carsService: CarsService) {}
 
@@ -20,7 +20,7 @@ export class CarsController {
     }
 
     @Get(':id')
-    getCarById(@Param('id', ParseIntPipe) id: number) {
+    getCarById(@Param('id') id: string) {
         return this.carsService.findById(id);
     }
 
