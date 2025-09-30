@@ -1,8 +1,12 @@
+import { IsString } from 'class-validator';
 
 export class CreateCarDto {
 
-    brand: string;
-    model: string;
+	@IsString()
+    readonly brand: string;
+    
+	@IsString()
+	readonly model: string;
 
 }
 
