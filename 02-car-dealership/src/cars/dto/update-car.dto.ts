@@ -5,7 +5,7 @@ export class UpdateCarDto {
 	@IsString()
 	@IsUUID()
 	@IsOptional()
-    readonly ud?: string;
+    readonly id?: string;
 	
 	@IsString()
 	@IsOptional()
