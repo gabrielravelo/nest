@@ -26,6 +26,7 @@ outputs
 *.sw?
 
 .env
+.env.prod
 
 # Local Netlify folder
 .netlify

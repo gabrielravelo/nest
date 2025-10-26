@@ -1,17 +1,30 @@
-import { BadGatewayException, BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+    BadGatewayException,
+    BadRequestException,
+    Injectable,
+    InternalServerErrorException,
+    NotFoundException,
+} from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { isValidObjectId, Model } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PokemonService {
+    private defaultLimit: number;
+
     constructor(
         @InjectModel(Pokemon.name)
         private readonly pokemonModel: Model<Pokemon>,
-    ) {}
+        private readonly configService: ConfigService,
+    ) {
+        this.defaultLimit = configService.get<number>('defaultLimit')!;
+        // console.log({ defaultLimit: configService.get<number>('defaultLimit')! })
+    }
 
     async create(createPokemonDto: CreatePokemonDto) {
         createPokemonDto.name = createPokemonDto.name.toLocaleLowerCase();
@@ -22,18 +35,17 @@ export class PokemonService {
         } catch (error) {
             this.handleExceptions(error);
         }
-
     }
 
-    findAll( paginationDto: PaginationDto ) {
+    findAll(paginationDto: PaginationDto) {
+        const { limit = this.defaultLimit, offset = 0 } = paginationDto;
 
-        const { limit = +process.env.DEFAULT_LIMIT!, offset = 0 } = paginationDto;
-
-        return this.pokemonModel.find()
+        return this.pokemonModel
+            .find()
             .limit(limit)
             .skip(offset)
             .sort({
-                no: 1
+                no: 1,
             })
             .select('-__v');
     }
@@ -41,20 +53,24 @@ export class PokemonService {
     async findOne(term: string) {
         let pokemon: Pokemon | null = null;
 
-        if ( !isNaN(+term) ) {
+        if (!isNaN(+term)) {
             pokemon = await this.pokemonModel.findOne({ no: term });
         }
 
-        if ( !pokemon && isValidObjectId(term) ) {
-            pokemon = await this.pokemonModel.findById( term );
+        if (!pokemon && isValidObjectId(term)) {
+            pokemon = await this.pokemonModel.findById(term);
         }
 
-        if ( !pokemon ) {
-            pokemon = await this.pokemonModel.findOne({ name: term.toLocaleLowerCase().trim() });
+        if (!pokemon) {
+            pokemon = await this.pokemonModel.findOne({
+                name: term.toLocaleLowerCase().trim(),
+            });
         }
 
-        if ( !pokemon ) 
-            throw new NotFoundException(`Pokemon with id, name or no "${term}" not found`);
+        if (!pokemon)
+            throw new NotFoundException(
+                `Pokemon with id, name or no "${term}" not found`,
+            );
 
         return pokemon;
     }
@@ -64,32 +80,35 @@ export class PokemonService {
             const pokemon = await this.findOne(term);
             if (updatePokemonDto?.name)
                 updatePokemonDto.name = updatePokemonDto.name.toLowerCase();
-            
+
             await pokemon.updateOne(updatePokemonDto);
-            
-            return {...pokemon.toJSON(), ...updatePokemonDto};
+
+            return { ...pokemon.toJSON(), ...updatePokemonDto };
         } catch (error) {
             this.handleExceptions(error);
-        } 
+        }
     }
 
     async remove(id: string) {
         // const pokemon = await this.findOne(id);
         // await pokemon.deleteOne();
-        
+
         // const result = await this.pokemonModel.findByIdAndDelete( id );
-        
-        const { deletedCount, acknowledged } = await this.pokemonModel.deleteOne({ _id: id });
-    
+
+        const { deletedCount, acknowledged } =
+            await this.pokemonModel.deleteOne({ _id: id });
+
         if (deletedCount === 0)
             throw new BadGatewayException(`Pokemon with id "${id}" not found`);
-    
+
         return;
     }
 
     private handleExceptions(error: any) {
-        if ( error.code === 11000) {
-            throw new BadRequestException(`Pokemon exists in db ${ JSON.stringify( error.keyValue ) }`);
+        if (error.code === 11000) {
+            throw new BadRequestException(
+                `Pokemon exists in db ${JSON.stringify(error.keyValue)}`,
+            );
         }
         console.log(error);
         throw new InternalServerErrorException(`Error - Check server logs`);
