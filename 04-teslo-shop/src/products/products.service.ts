@@ -109,9 +109,6 @@ export class ProductsService {
                 product.images = images.map( 
                     image => this.productImageRepository.create({ url: image }) 
                 );
-            } else {
-                // ????
-                // product.images ???
             }
 
             await queryRunner.manager.save( product );
@@ -120,7 +117,7 @@ export class ProductsService {
             await queryRunner.commitTransaction();
             await queryRunner.release();
             
-            return product;
+            return this.findOnePlain( id );
         } catch (error) {
             this.handleDBExceptions(error);            
         }
@@ -139,5 +136,19 @@ export class ProductsService {
         throw new InternalServerErrorException(
             'Unexpected error, check server logs.',
         );
+    }
+
+    async deleteAllProducts() {
+        const query = this.productRepository.createQueryBuilder('product');
+
+        try {
+            return await query
+                .delete()
+                .where({})
+                .execute();
+
+        } catch (error) {
+            this.handleDBExceptions(error);
+        }
     }
 }
