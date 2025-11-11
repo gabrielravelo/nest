@@ -7,20 +7,39 @@ import {
     BadRequestException,
     MaxFileSizeValidator,
     FileTypeValidator,
+    Get,
+    Param,
+    Res,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileFilter } from './helpers/fileFilter.helper';
 import { diskStorage } from 'multer';
+import { fileNamer, ImageFileValidator } from './helpers';
+import type { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('files')
 export class FilesController {
-    constructor(private readonly filesService: FilesService) {}
+    constructor(
+        private readonly filesService: FilesService,
+        private readonly configService: ConfigService,
+    ) {}
+
+    @Get('product/:imageName')
+    findProductImage(
+        @Res() res: Response,
+        @Param('imageName') imageName: string
+    ) {
+        const path = this.filesService.getStaticProductImage( imageName );
+        
+        res.sendFile( path );
+    }
 
     @Post('product')
     @UseInterceptors(FileInterceptor('file', {
         storage: diskStorage({
-            destination: './static/uploads'
+            destination: './static/products',
+            filename: fileNamer,
         })
     }))
     uploadProductImage(
@@ -28,19 +47,18 @@ export class FilesController {
             new ParseFilePipe({
                 validators: [
                     new MaxFileSizeValidator({ maxSize: 500000 }),
-                    new FileTypeValidator({
-                        fileType: 'image/jpeg',
-                    }),
+                    new ImageFileValidator(),
                 ],
             }),
         )
         file: Express.Multer.File,
     ) {
-        console.log('File mimetype:', file.mimetype); // ← Verifica el mimetype real
-        console.log('File originalname:', file.originalname);
-        return {
-            fileName: file.originalname,
-            mimetype: file.mimetype // ← Para verlo en la respuesta
-        };
+        if ( !file ) {
+            throw new BadRequestException('Make sure that the file is an image.');
+        }
+
+        const secureUrl = `${ this.configService.get('HOST_API') }/files/product/${ file.filename }`;
+
+        return { secureUrl };
     }
 }

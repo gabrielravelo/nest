@@ -1,19 +1,24 @@
+import { FileValidator } from '@nestjs/common';
 
-export const fileFilter = (
-    req: Express.Request, 
-    file: Express.Multer.File,
-    callback: Function
-) => {
-
-    if ( !file ) return callback( new Error('File is empty'), false );
-
-    const fileExtension = file.mimetype.split('/')[1];
-    const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-    if ( validExtensions.includes( fileExtension) ) {
-        return callback( null, true );
+export class ImageFileValidator extends FileValidator {
+    constructor() {
+        super({});
     }
 
-    callback(null, false);
-}
+    isValid(file: Express.Multer.File): boolean {
+        if (!file) return false;
 
+        const allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/jpg',
+            'image/gif',
+        ];
+
+        return allowedMimeTypes.includes(file.mimetype);
+    }
+
+    buildErrorMessage(file: Express.Multer.File): string {
+        return `File type ${file.mimetype} is not allowed. Only JPEG, PNG, JPG are allowed`;
+    }
+}
